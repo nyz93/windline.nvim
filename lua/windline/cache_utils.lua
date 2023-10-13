@@ -38,24 +38,45 @@ local function cache_func(auto_event, variable_name, action, loading_action, vim
     end
     if d_check[variable_name] == nil then
         d_check[variable_name] = false
-        local target = '*'
-        if type(auto_event) == 'string' then
-            target = auto_event:match('User') and ''
-        else
-            for _, ev in ipairs(auto_event) do
-                if ev:match('User') then
-                    target = ''
-                    break
-                end
+        local cmds = {
+            ['*'] = {},
+            User = {},
+        }
+        local function parse_event(event_name)
+            local event, change_count = event_name:gsub("User ", "")
+            if change_count == 0 then
+                table.insert(cmds['*'], event)
+            else
+                table.insert(cmds['User'], event)
             end
         end
-        api.nvim_create_autocmd(auto_event, {
-            group = api.nvim_create_augroup('WL' .. variable_name, { clear = true }),
-            pattern = target,
-            callback = function()
-                WindLine.cache_buffer_cb(variable_name)
+        if type(auto_event) == 'string' then
+            parse_event(auto_event)
+        else
+            for _, ev in ipairs(auto_event) do
+                parse_event(ev)
             end
-        })
+        end
+
+        local group = api.nvim_create_augroup('WL' .. variable_name, { clear = true })
+        if #cmds['*'] > 0 then
+            api.nvim_create_autocmd(cmds['*'], {
+                pattern = '*',
+                group = group,
+                callback = function()
+                    WindLine.cache_buffer_cb(variable_name)
+                end
+            })
+        end
+        if #cmds['User'] > 0 then
+            api.nvim_create_autocmd('User', {
+                pattern = cmds['User'],
+                group = group,
+                callback = function()
+                    WindLine.cache_buffer_cb(variable_name)
+                end
+            })
+        end
     end
 
     local func = function(bufnr, winid, width)
