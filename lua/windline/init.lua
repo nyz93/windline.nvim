@@ -154,6 +154,7 @@ end
 
 M.on_win_enter = function(bufnr, winid)
     winid = winid or vim.api.nvim_get_current_win()
+    if api.nvim_win_get_config(winid).relative ~= '' then return false end
     if not vim.api.nvim_win_is_valid(winid) then return false end
     bufnr = bufnr or vim.api.nvim_win_get_buf(winid)
     M.check_autocmd_component(bufnr)
